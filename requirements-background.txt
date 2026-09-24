@@ -1,0 +1,4 @@
+# حذف زمینه دیگر به rembg وابسته نیست.
+# مدل محلی U²-NetP با tools/download_models.py دریافت می‌شود.
+numpy==2.4.6
+onnxruntime==1.27.0

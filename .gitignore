@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.idea/
+.vscode/
+
+build/
+output/*
+!output/.gitkeep
+app_data/*
+!app_data/.gitkeep
+
+# The model can be downloaded for release builds with tools/download_models.py.
+# Keep it out of Git unless you explicitly want to vendor the 4.57MB model.
+assets/models/u2netp.onnx

@@ -1,0 +1,28 @@
+[project]
+name = "poustercreator"
+version = "2.1.0"
+description = "پوستر ساز جلسات فقهی با حذف زمینه آفلاین"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "flet==1.0.0",
+    "Pillow==12.2.0",
+    "arabic-reshaper==3.0.1",
+    "python-bidi==0.6.11",
+    "numpy==2.4.6",
+    "onnxruntime==1.27.0",
+]
+
+[tool.flet]
+product = "پوستر ساز جلسات فقهی"
+org = "com.poustercreator"
+artifact = "PousterCreator"
+company = "PousterCreator"
+copyright = "Copyright © 2026 PousterCreator"
+
+[tool.flet.app]
+module = "main.py"
+exclude = [".git", ".venv", "__pycache__", "output", "app_data"]
+
+[tool.flet.android]
+min_sdk_version = 24
+split_per_abi = true
