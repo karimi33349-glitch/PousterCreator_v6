@@ -23,14 +23,15 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install flet==1.0.0
 
-
       - name: Verify required poster assets
         shell: bash
         run: |
-          test -f assets/template1.jpg
-          test -f assets/template2.jpg
+          test -f assets/template_1.jpg
+          test -f assets/template_2.jpg
+          test -f assets/template_3.jpg
+          test -f assets/template_4.jpg
+          test -f assets/template_5.jpg
           test -f assets/calibrib.ttf
-          test -f assets/models/u2netp.onnx
 
       - name: Build APK
         run: flet build apk --python-version 3.12 --split-per-abi --yes --skip-flutter-doctor
@@ -40,4 +41,4 @@ jobs:
         with:
           name: PousterCreator-apk
           path: build/**/app-*.apk
-          if-no-files-found: error
+          if-no-files-found: errorx
