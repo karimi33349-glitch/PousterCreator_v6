@@ -34,11 +34,11 @@ jobs:
           test -f assets/calibrib.ttf
 
       - name: Build APK
-        run: flet build apk --python-version 3.12 --split-per-abi --yes --skip-flutter-doctor
-
+        run: flet build apk --python-version 3.12 --split-per-abi --yes --skip-flutter-doctor -v
+        
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: PousterCreator-apk
           path: build/**/app-*.apk
-          if-no-files-found: errorx
+          if-no-files-found: error
