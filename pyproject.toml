@@ -26,3 +26,4 @@ exclude = [".git", ".venv", "__pycache__", "output", "app_data"]
 [tool.flet.android]
 min_sdk_version = 24
 split_per_abi = true
+target_arch = ["arm64-v8a", "x86_64"]
