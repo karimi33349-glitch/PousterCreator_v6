@@ -34,7 +34,7 @@ SEGMENT_INPUT_SIZE = (320, 320)
 SEGMENT_MAX_SIDE = 1280
 
 # ============================================================
-# تنظیمات قالب ۸۴۰×۱۲۶۰ — مختصات در هر پنج زمینه مشترک است
+# تنظیمات قالب ۸۴۰×۱۲۶۰ — مختصات در همهٔ زمینه‌ها مشترک است
 # ============================================================
 BOX_TOP_NUMBER = {"x": 420, "y": 190, "w": 300, "h": 60}
 BOX_TOP_TITLE = {"x": 420, "y": 290, "w": 400, "h": 85}
@@ -44,10 +44,10 @@ BOX_PRESENTER = {"x": 490, "y": 915, "w": 225, "h": 90}
 BOX_DATE = {"x": 410, "y": 1080, "w": 205, "h": 35}
 
 TEMPLATE_SIZE = (853, 1280)
-# پنج زمینهٔ قابل انتخاب؛ همهٔ آن‌ها از مختصات مشترک متن و عکس استفاده می‌کنند.
+# زمینه‌های قابل انتخاب؛ همهٔ آن‌ها از مختصات مشترک متن و عکس استفاده می‌کنند.
 TEMPLATE_FILES = tuple(
     (f"قالب شماره {index}", f"template_{index}.jpg")
-    for index in range(1, 6)
+    for index in range(1, 8)
 )
 TEMPLATE_COUNT = len(TEMPLATE_FILES)
 
@@ -290,9 +290,14 @@ def load_font(font_path: str, size: int):
 # ============================================================
 # اندازه‌گذاری هوشمند متن در کادر
 # ============================================================
+SUBJECT_BASE_FONT_SIZE = 72
+SUBJECT_BASE_LINE_SPACING = 72
+PRESENTER_BASE_FONT_SIZE = 42
+PRESENTER_BASE_LINE_SPACING = 52
+
 AUTO_FIT_HORIZONTAL_PADDING = 6
 AUTO_FIT_VERTICAL_PADDING = 4
-AUTO_FIT_MIN_FONT_SIZE = 8
+AUTO_FIT_MIN_FONT_SIZE = 10
 
 
 def _measure_shaped_line(draw, text: str, font):
@@ -315,62 +320,40 @@ def fit_font_size_for_lines(
     min_size: int = AUTO_FIT_MIN_FONT_SIZE,
 ):
     """
-    بزرگ‌ترین اندازه فونتی را پیدا می‌کند که تمام خطوط از نظر عرض و ارتفاع
-    داخل محدودهٔ امن کادر قرار بگیرند.
-
-    متن کوتاه با همان اندازهٔ پایهٔ فعلی رسم می‌شود. فقط وقتی متن از کادر
-    خارج شود، اندازهٔ فونت و فاصلهٔ خطوط به‌صورت خودکار کاهش پیدا می‌کند.
+    از اندازهٔ فونت بزرگ شروع می‌کند و تا جایی که کل متن دقیقاً داخل کادر
+    جا شود، اندازهٔ فونت را کاهش می‌دهد.
     """
     normalized_lines = [str(line or "") for line in (lines or [""])]
     available_width = max(1, int(box["w"] - 2 * AUTO_FIT_HORIZONTAL_PADDING))
     available_height = max(1, int(box["h"] - 2 * AUTO_FIT_VERTICAL_PADDING))
 
-    def metrics(size: int):
-        font = load_font(font_path, size)
-        measurements = [
-            _measure_shaped_line(draw, line, font) for line in normalized_lines
-        ]
-        max_width = max((item[1] for item in measurements), default=0)
+    size = int(base_size)
+    min_size = max(1, int(min_size))
 
+    while size >= min_size:
+        font = load_font(font_path, size)
+        measured = [_measure_shaped_line(draw, line, font) for line in normalized_lines]
+        widths = [item[1] for item in measured]
+        heights = [item[2] for item in measured]
+
+        max_width = max(widths, default=0)
         if len(normalized_lines) <= 1:
             line_spacing = 0
-            total_height = max((item[2] for item in measurements), default=0)
+            total_height = max(heights, default=0)
         else:
-            # فاصلهٔ خطوط با اندازهٔ فونت متناسب می‌شود؛ این کار باعث می‌شود
-            # متن‌های ۳ یا ۴ خطی هم بتوانند داخل کادر باقی بمانند.
-            line_spacing = max(2, int(round(base_line_spacing * size / base_size)))
-            total_height = (
-                sum(item[2] for item in measurements)
-                + line_spacing * (len(normalized_lines) - 1)
-            )
+            line_spacing = max(1, int(round(base_line_spacing * size / base_size)))
+            total_height = sum(heights) + line_spacing * (len(normalized_lines) - 1)
 
-        return font, line_spacing, max_width, total_height
+        if max_width <= available_width and total_height <= available_height:
+            return font, line_spacing
 
-    base_font, base_spacing, base_width, base_height = metrics(base_size)
-    if base_width <= available_width and base_height <= available_height:
-        return base_font, base_spacing
+        size -= 1
 
-    # جست‌وجوی دودویی برای پیدا کردن بزرگ‌ترین اندازهٔ ممکنی که هنوز فیت است.
-    low = max(6, int(min_size))
-    high = int(base_size)
-    best = None
-
-    while low <= high:
-        mid = (low + high) // 2
-        font, spacing, width, height = metrics(mid)
-        if width <= available_width and height <= available_height:
-            best = (font, spacing)
-            low = mid + 1
-        else:
-            high = mid - 1
-
-    if best is not None:
-        return best
-
-    # برای ورودی‌های فوق‌العاده طولانی، حداقل اندازهٔ تعریف‌شده استفاده می‌شود.
-    min_font, min_spacing, _, _ = metrics(int(min_size))
-    return min_font, min_spacing
-
+    # برای متن‌های فوق‌العاده طولانی، حداقل اندازهٔ تعیین‌شده حفظ می‌شود.
+    font = load_font(font_path, min_size)
+    if len(normalized_lines) <= 1:
+        return font, 0
+    return font, max(1, int(round(base_line_spacing * min_size / base_size)))
 
 def draw_fitted_centered_lines(
     draw,
@@ -381,7 +364,7 @@ def draw_fitted_centered_lines(
     base_line_spacing: int,
     fill_color,
 ):
-    """رسم متن چندخطی با کوچک‌سازی خودکار در صورت نیاز."""
+    """رسم متن چندخطی با بزرگ‌ترین فونت ممکن و بدون خروج از کادر."""
     normalized_lines = [str(line or "") for line in (lines or [""])]
     font, line_spacing = fit_font_size_for_lines(
         draw,
@@ -392,18 +375,22 @@ def draw_fitted_centered_lines(
         base_line_spacing,
     )
 
+    measured = [_measure_shaped_line(draw, line, font) for line in normalized_lines]
+    heights = [item[2] for item in measured]
+
     if len(normalized_lines) <= 1:
         draw_centered_text(draw, normalized_lines[0], box, font, fill_color)
         return font
 
-    # جای خطوط نسبت به مرکز کادر محاسبه می‌شود؛ ساختار فعلی مرکزچین حفظ شده است.
-    total_slot_height = len(normalized_lines) * line_spacing
-    start_y = box["y"] - total_slot_height / 2 + line_spacing / 2
+    total_height = sum(heights) + line_spacing * (len(normalized_lines) - 1)
+    cursor_top = box["y"] - total_height / 2
 
     for index, line in enumerate(normalized_lines):
+        line_height = heights[index]
         line_box = box.copy()
-        line_box["y"] = start_y + index * line_spacing
+        line_box["y"] = cursor_top + line_height / 2
         draw_centered_text(draw, line, line_box, font, fill_color)
+        cursor_top += line_height + line_spacing
 
     return font
 
@@ -503,8 +490,8 @@ def create_poster(template_path, font_path, output_path, data, photo_bytes=None)
         lines,
         BOX_MIDDLE,
         str(font_path),
-        base_size=55,
-        base_line_spacing=60,
+        base_size=SUBJECT_BASE_FONT_SIZE,
+        base_line_spacing=SUBJECT_BASE_LINE_SPACING,
         fill_color=NAVY,
     )
 
@@ -530,8 +517,8 @@ def create_poster(template_path, font_path, output_path, data, photo_bytes=None)
         presenter_lines,
         BOX_PRESENTER,
         str(font_path),
-        base_size=26,
-        base_line_spacing=50,
+        base_size=PRESENTER_BASE_FONT_SIZE,
+        base_line_spacing=PRESENTER_BASE_LINE_SPACING,
         fill_color=NAVY,
     )
 
@@ -897,7 +884,7 @@ def main(page: ft.Page):
         pending_restore["state"] = state
         show_template_selection()
         status_text.value = (
-            f"پیش‌نویس آماده است؛ ابتدا «{template_name}» را از میان پنج زمینه انتخاب کنید."
+            f"پیش‌نویس آماده است؛ ابتدا «{template_name}» را از میان هفت زمینه انتخاب کنید."
         )
         status_text.color = GOLD
         page.update()
@@ -980,8 +967,8 @@ def main(page: ft.Page):
             lines,
             BOX_MIDDLE,
             str(font_path),
-            base_size=55,
-            base_line_spacing=60,
+            base_size=SUBJECT_BASE_FONT_SIZE,
+            base_line_spacing=SUBJECT_BASE_LINE_SPACING,
             fill_color=NAVY,
         )
 
@@ -1008,8 +995,8 @@ def main(page: ft.Page):
             presenter_lines,
             BOX_PRESENTER,
             str(font_path),
-            base_size=26,
-            base_line_spacing=50,
+            base_size=PRESENTER_BASE_FONT_SIZE,
+            base_line_spacing=PRESENTER_BASE_LINE_SPACING,
             fill_color=NAVY,
         )
 
@@ -2359,7 +2346,7 @@ def main(page: ft.Page):
                         spacing=8,
                     ),
                     ft.Text(
-                        "قبل از ورود به اطلاعات جلسه، یکی از پنج زمینه را انتخاب کنید. هر پنج زمینه از همان مختصات ثابت برای جانمایی متن و عکس استفاده می‌کنند.",
+                        "قبل از ورود به اطلاعات جلسه، یکی از هفت زمینه را انتخاب کنید. همهٔ زمینه‌ها از همان مختصات ثابت برای جانمایی متن و عکس استفاده می‌کنند.",
                         size=11,
                         color=MUTED,
                         text_align=ft.TextAlign.RIGHT,
@@ -2502,7 +2489,7 @@ def main(page: ft.Page):
             (
                 ft.Icons.LAYERS_OUTLINED,
                 "۱. ابتدا زمینه را انتخاب کنید",
-                "تا زمانی که یکی از پنج زمینه انتخاب نشود، فرم اطلاعات باز نمی‌شود. با دکمه برگشت در صفحه ویرایش می‌توانید زمینه را عوض کنید.",
+                "تا زمانی که یکی از هفت زمینه انتخاب نشود، فرم اطلاعات باز نمی‌شود. با دکمه برگشت در صفحه ویرایش می‌توانید زمینه را عوض کنید.",
             ),
             (
                 ft.Icons.EDIT,
@@ -2637,7 +2624,7 @@ def main(page: ft.Page):
                                 ft.Column(
                                     [
                                         ft.Text("نکته توسعه", size=15, weight=ft.FontWeight.BOLD, color=CREAM),
-                                        ft.Text("برای استفاده از همهٔ زمینه‌ها، فایل‌های template_1.jpg تا template_5.jpg را در assets قرار دهید؛ مختصات متن و عکس در هر پنج زمینه مشترک است.", size=11, color=MUTED),
+                                        ft.Text("برای استفاده از همهٔ زمینه‌ها، فایل‌های template_1.jpg تا template_7.jpg را در assets قرار دهید؛ مختصات متن و عکس در همهٔ زمینه‌ها مشترک است.", size=11, color=MUTED),
                                     ],
                                     spacing=5,
                                 )
